@@ -1,10 +1,13 @@
 package br.com.pinalli.screenmatch.main;
 
 import br.com.pinalli.screenmatch.model.DataSerie;
+import br.com.pinalli.screenmatch.model.EpisodesData;
 import br.com.pinalli.screenmatch.model.SeasonData;
 import br.com.pinalli.screenmatch.services.APIconsume;
 import br.com.pinalli.screenmatch.services.DataConvert;
+import io.micrometer.common.KeyValues;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Scanner;
 import java.util.stream.Collectors;
@@ -48,16 +51,34 @@ public class Main {
                 List<SeasonData> seasons = fetchAllSeasons(api, convert, dataSerie.totalSeasons(), serieName);
                 System.out.println("\nSeasons:");
                 seasons.forEach(System.out::println);
+
+                findTop5Episodes(seasons);
                 break;
+
 
             } catch (Exception e) {
                 System.out.println("An error occurred. Please try again.\n");
             }
+
         }
+
     }
 
+    /**
+     * Fetches data for all seasons of a specified TV series from the OMDB API.
+     * This method uses Java Streams to concurrently retrieve information for each season
+     * of the series, converting the JSON responses into SeasonData objects.
+     *
+     * @param consumeApi   The API consumer instance used to make HTTP requests
+     * @param convert      The converter instance used to parse JSON responses
+     * @param totalSeasons The total number of seasons to fetch (must be positive)
+     * @param serieName    The name of the TV series to search for
+     * @return A List of SeasonData objects containing information for each season
+     * @throws IllegalArgumentException if totalSeasons is null or less than or equal to 0
+     * @throws RuntimeException         if any error occurs while fetching or parsing season data
+     */
     private List<SeasonData> fetchAllSeasons(APIconsume consumeApi, DataConvert convert,
-                                             Integer totalSeasons, String serieName) throws Exception {
+                                             Integer totalSeasons, String serieName) {
         if (totalSeasons == null || totalSeasons <= 0) {
             throw new IllegalArgumentException("Invalid number of seasons");
         }
@@ -74,4 +95,27 @@ public class Main {
                 })
                 .collect(Collectors.toList());
     }
+
+    /**
+     * Finds and prints the top 5 episodes based on rating.
+     *
+     * @param seasons List of seasons containing episode data
+     */
+    private void findTop5Episodes(List<SeasonData> seasons) {
+        System.out.println("\nTop 5 Episodes:");
+
+        seasons.stream()
+                .flatMap(season -> season.episodes().stream())
+                .filter(episode -> !episode.assessment().equals("N/A"))
+                .sorted(Comparator.comparing(EpisodesData::assessment).reversed())
+                .limit(5)
+                .forEach(episode -> System.out.printf("Title: %s, Rating: %s\n",
+                        episode.title(),
+                        episode.assessment()));
+    }
 }
+
+
+
+
+
