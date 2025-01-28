@@ -3,6 +3,8 @@ package br.com.pinalli.screenmatch.model;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+import java.util.List;
+
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record EpisodesData(@JsonAlias("Title") String title,@JsonAlias("Episodes") Integer number,@JsonAlias("imdbRating") String assessment,@JsonAlias("Released") String releaseDate) {
+public record SeasonData(@JsonAlias("Season")Integer number,@JsonAlias("Episodes") List<EpisodesData> episodes) {
 }
