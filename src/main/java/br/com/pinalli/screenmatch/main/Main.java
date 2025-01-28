@@ -1,11 +1,12 @@
 package br.com.pinalli.screenmatch.main;
 
 import br.com.pinalli.screenmatch.model.DataSerie;
+import br.com.pinalli.screenmatch.model.Episode;
 import br.com.pinalli.screenmatch.model.EpisodesData;
 import br.com.pinalli.screenmatch.model.SeasonData;
 import br.com.pinalli.screenmatch.services.APIconsume;
 import br.com.pinalli.screenmatch.services.DataConvert;
-import io.micrometer.common.KeyValues;
+
 
 import java.util.Comparator;
 import java.util.List;
@@ -17,7 +18,7 @@ public class Main {
     private final Scanner reader = new Scanner(System.in);
     private final APIconsume api = new APIconsume();
     private final DataConvert convert = new DataConvert();
-
+    private final Episode episode = new Episode();
     private static final String BASE_URL = "https://www.omdbapi.com/?t=";
     private static final String API_KEY = "&apikey=6585022c";
 
@@ -52,7 +53,7 @@ public class Main {
                 System.out.println("\nSeasons:");
                 seasons.forEach(System.out::println);
 
-                findTop5Episodes(seasons);
+                episode.findTop5Episodes(seasons);
                 break;
 
 
@@ -96,23 +97,7 @@ public class Main {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Finds and prints the top 5 episodes based on rating.
-     *
-     * @param seasons List of seasons containing episode data
-     */
-    private void findTop5Episodes(List<SeasonData> seasons) {
-        System.out.println("\nTop 5 Episodes:");
 
-        seasons.stream()
-                .flatMap(season -> season.episodes().stream())
-                .filter(episode -> !episode.assessment().equals("N/A"))
-                .sorted(Comparator.comparing(EpisodesData::assessment).reversed())
-                .limit(5)
-                .forEach(episode -> System.out.printf("Title: %s, Rating: %s\n",
-                        episode.title(),
-                        episode.assessment()));
-    }
 }
 
 
