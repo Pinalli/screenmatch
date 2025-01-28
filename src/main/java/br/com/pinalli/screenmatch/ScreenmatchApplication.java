@@ -1,6 +1,7 @@
 package br.com.pinalli.screenmatch;
 
 import br.com.pinalli.screenmatch.model.DataSerie;
+import br.com.pinalli.screenmatch.model.EpisodesData;
 import br.com.pinalli.screenmatch.services.APIconsume;
 import br.com.pinalli.screenmatch.services.DataConvert;
 import org.springframework.boot.CommandLineRunner;
@@ -24,5 +25,8 @@ public class ScreenmatchApplication implements CommandLineRunner {
 		DataConvert convert = new DataConvert();
 		DataSerie data = convert.getData(json, DataSerie.class);
 		System.out.println("Data Series: " + data);
+		json = consumeApi.getData("https://www.omdbapi.com/?t=gilmore+girls&season=1&episode=2&apikey=6585022c");
+		EpisodesData episodes = convert.getData(json, EpisodesData.class);
+		System.out.println("Episodes: " + episodes);
 	}
 }
