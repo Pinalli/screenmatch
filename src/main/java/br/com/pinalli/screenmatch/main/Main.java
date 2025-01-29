@@ -8,17 +8,20 @@ import br.com.pinalli.screenmatch.services.APIconsume;
 import br.com.pinalli.screenmatch.services.DataConvert;
 
 
+import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Scanner;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
 
 public class Main {
     private final Scanner reader = new Scanner(System.in);
     private final APIconsume api = new APIconsume();
     private final DataConvert convert = new DataConvert();
-    private final Episode episode = new Episode();
+
     private static final String BASE_URL = "https://www.omdbapi.com/?t=";
     private static final String API_KEY = "&apikey=6585022c";
 
@@ -53,12 +56,13 @@ public class Main {
                 System.out.println("\nSeasons:");
                 seasons.forEach(System.out::println);
 
-                episode.findTop5Episodes(seasons);
+                System.out.println("\nFetching top 5 episodes...");
+                findTop5Episodes(seasons);
                 break;
 
 
             } catch (Exception e) {
-                System.out.println("An error occurred. Please try again.\n");
+                // System.out.println("An error occurred. Please try again.\n");
             }
 
         }
@@ -97,7 +101,65 @@ public class Main {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Finds and prints the top 5 episodes based on rating.
+     *
+     * @param seasonsDate List of seasons containing episode data
+     */
+    public void findTop5Episodes(List<SeasonData> seasonsDate) {
+        List<EpisodesData> episodeDataList = seasonsDate.stream()
+                .flatMap(t -> t.episodes().stream())
+                .toList();
 
+//        System.out.println("\nTop five Episodes:");
+//        episodeDataList.stream()
+//                .filter(e -> !e.assessment().equalsIgnoreCase("N/A "))
+//                .peek(e -> System.out.println("PRIMEIRO FILTOR filto(N/A) " + e))
+//                .sorted(Comparator.comparing(EpisodesData::assessment).reversed())
+//                .peek(e -> System.out.println("ORDENAÇÃO " + e))
+//                .limit(10)
+//                .peek(e -> System.out.println("LIMITE " + e))
+//                .map(e -> e.title().toUpperCase())
+//                .peek(e -> System.out.println("MAPEAMENTO " + e))
+//                .forEach(System.out::println);
+
+        List<Episode> episodes = seasonsDate.stream()
+                .flatMap(t -> t.episodes().stream()
+                        .map(e -> new Episode(t.number(), e))
+                ).collect(Collectors.toList());
+
+        episodes.forEach(System.out::println);
+
+        System.out.println("\nEnter an excerpt from the title of the episode you want to search for:");
+        var titleExcerpt = reader.nextLine();
+
+        Optional<Episode> foundEpisode = episodes.stream()
+                .filter(e -> e.getTitle().toUpperCase().contains(titleExcerpt.toUpperCase()))
+                .findFirst();
+
+        if (foundEpisode.isPresent()) {
+            Episode episode = foundEpisode.get();
+            System.out.println("Episode found:\n" +
+                    "Season: " + episode.getSeason() +
+                    ", Title: '" + episode.getTitle() + '\'' +
+                    ", Episode Number: " + episode.getEpisodeNumber() +
+                    ", Assessment: " + episode.getAssessment() +
+                    ", Date Release: " + episode.getDateRelease());
+        } else {
+            System.out.println("Episode not found.");
+        }
+
+
+//        System.out.println("A partir de que ano você deseja ver os episódios?");
+//        var year = reader.nextInt();
+//        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+//        episodes.stream()
+//                .filter(e -> e.getDateRelease() != null && e.getDateRelease().getYear() >= year)
+//                .sorted(Comparator.comparing(Episode::getDateRelease))
+//                .forEach(e -> System.out.println("TEMPORADA: " +
+//                        e.getSeason() + " EPISÓDIO:" + e.getTitle() + " " + e.getEpisodeNumber() + " AVALIAÇÃ0:" + e.getAssessment() + " DATA LANÇAMENTO:" + e.getDateRelease().format(formatter)
+//                ));
+    }
 }
 
 
