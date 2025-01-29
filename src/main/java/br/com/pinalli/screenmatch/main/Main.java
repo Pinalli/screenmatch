@@ -1,3 +1,14 @@
+
+/**
+ * Author: Alberto Rocha Pinalli
+ * Date: January 28, 2025
+ * Description:
+ * Implemented new methods to enhance code modularity and user interaction:
+ * - Added method to search for episodes by title excerpt.
+ * - Introduced functionality to filter and display episodes based on user-inputted year.
+ * - Separated functions into distinct methods for improved readability and maintainability.
+ */
+
 package br.com.pinalli.screenmatch.main;
 
 import br.com.pinalli.screenmatch.model.DataSerie;
@@ -7,12 +18,8 @@ import br.com.pinalli.screenmatch.model.SeasonData;
 import br.com.pinalli.screenmatch.services.APIconsume;
 import br.com.pinalli.screenmatch.services.DataConvert;
 
-
 import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.Scanner;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -36,30 +43,34 @@ public class Main {
                     System.out.println("Series name cannot be empty. Please try again.\n");
                     continue;
                 }
-
-                // Busca os dados da série
+                //get data from API
                 var json = api.getData(BASE_URL + serieName.replace(" ", "+") + API_KEY);
                 DataSerie dataSerie = convert.getData(json, DataSerie.class);
 
-                // Verifica se a série existe e tem dados válidos
+                // verify if the series was found
                 if (dataSerie == null || dataSerie.title() == null ||
                         "N/A".equals(dataSerie.title()) || dataSerie.totalSeasons() == null) {
                     System.out.println("Series not found. Please try again.\n");
                     continue;
                 }
-
                 System.out.println("\nSeries found!");
-                System.out.printf("Title: %s\n", dataSerie);
+                System.out.println(dataSerie);
 
-                // Busca todas as temporadas da série
+                // search for all seasons
                 List<SeasonData> seasons = fetchAllSeasons(api, convert, dataSerie.totalSeasons(), serieName);
-                System.out.println("\nSeasons:");
+                System.out.println("\nALL SEASONS:");
                 seasons.forEach(System.out::println);
 
-                System.out.println("\nFetching top 5 episodes...");
-                findTop5Episodes(seasons);
-                break;
+                findEpisodeByTitle(transformEpisodes(seasons));
 
+                findTop5Episodes(seasons);
+
+                allEpisodes(transformEpisodes(seasons));
+
+                averageAssessmentBySeason(transformEpisodes(seasons));
+
+                filterEpisodesByYearFromUserInput(transformEpisodes(seasons), reader);
+                break;
 
             } catch (Exception e) {
                 // System.out.println("An error occurred. Please try again.\n");
@@ -101,6 +112,54 @@ public class Main {
                 .collect(Collectors.toList());
     }
 
+    public List<Episode> transformEpisodes(List<SeasonData> seasonsDate) {
+        return seasonsDate.stream()
+                .flatMap(t -> t.episodes().stream()
+                        .map(e -> new Episode(t.number(), e)))
+                .collect(Collectors.toList());
+    }
+
+    public void  averageAssessmentBySeason(List<Episode> episodes) {
+        System.out.println("\nAVARAGE ASSESSMENT BY SEASON");
+        Map<Integer, Double> assessmentForSeason = episodes.stream()
+                .filter(e -> e.getAssessment() > 0.0)
+                .collect(Collectors.groupingBy(Episode::getSeason,
+                        Collectors.averagingDouble(Episode::getAssessment)));
+        System.out.println(assessmentForSeason);
+
+        DoubleSummaryStatistics stats = episodes.stream()
+                .filter(e -> e.getAssessment() > 0.0)
+                .collect(Collectors.summarizingDouble(Episode::getAssessment));
+        System.out.println("\nAVARAGE " + stats.getAverage() + "\nWORSE EPISODE " + stats.getMin() + " \nBEST EPISODE " + stats.getMax() + "\nTOTAL " + stats.getCount());
+
+    }
+
+    public void allEpisodes(List<Episode> episodes) {
+        System.out.println("\nALL SEASONS AND THEIR RESPECTIVE EPISODES:");
+        episodes.forEach(System.out::println);
+    }
+
+    public void findEpisodeByTitle(List<Episode> episodes) {
+        System.out.println("\nEnter an excerpt from the title of the episode you want to search for:");
+        String titleExcerpt = reader.nextLine();
+
+        Optional<Episode> foundEpisode = episodes.stream()
+                .filter(e -> e.getTitle().toUpperCase().contains(titleExcerpt.toUpperCase()))
+                .findFirst();
+
+        if (foundEpisode.isPresent()) {
+            Episode episode = foundEpisode.get();
+            System.out.println("EPISODE FOUND:\n" +
+                    "Season: " + episode.getSeason() +
+                    ", Title: '" + episode.getTitle() + '\'' +
+                    ", Episode Number: " + episode.getEpisodeNumber() +
+                    ", Assessment: " + episode.getAssessment() +
+                    ", Date Release: " + episode.getDateRelease());
+        } else {
+            System.out.println("EPISODE NOT FOUND!.");
+        }
+    }
+
     /**
      * Finds and prints the top 5 episodes based on rating.
      *
@@ -111,56 +170,34 @@ public class Main {
                 .flatMap(t -> t.episodes().stream())
                 .toList();
 
-//        System.out.println("\nTop five Episodes:");
-//        episodeDataList.stream()
-//                .filter(e -> !e.assessment().equalsIgnoreCase("N/A "))
-//                .peek(e -> System.out.println("PRIMEIRO FILTOR filto(N/A) " + e))
-//                .sorted(Comparator.comparing(EpisodesData::assessment).reversed())
-//                .peek(e -> System.out.println("ORDENAÇÃO " + e))
-//                .limit(10)
-//                .peek(e -> System.out.println("LIMITE " + e))
-//                .map(e -> e.title().toUpperCase())
-//                .peek(e -> System.out.println("MAPEAMENTO " + e))
-//                .forEach(System.out::println);
+        System.out.println("\nTOP FIVE EPISODES:");
+        episodeDataList.stream()
+                .filter(e -> !e.assessment().equalsIgnoreCase("N/A "))
+                //      .peek(e -> System.out.println("FIRST FILTER (N/A) " + e))
+                .sorted(Comparator.comparing(EpisodesData::assessment).reversed())
+                //      .peek(e -> System.out.println("ORDERING " + e))
+                .limit(5)
+                //      .peek(e -> System.out.println("LIMIT " + e))
+                .map(e -> e.title().toUpperCase())
+                //      .peek(e -> System.out.println("MAP " + e))
+                .forEach(System.out::println);
+    }
 
-        List<Episode> episodes = seasonsDate.stream()
-                .flatMap(t -> t.episodes().stream()
-                        .map(e -> new Episode(t.number(), e))
-                ).collect(Collectors.toList());
+    public void filterEpisodesByYearFromUserInput(List<Episode> episodes, Scanner reader) {
+        System.out.println("\nWhat year do you want to watch the episodes from?");
+        var year = reader.nextInt();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-        episodes.forEach(System.out::println);
-
-        System.out.println("\nEnter an excerpt from the title of the episode you want to search for:");
-        var titleExcerpt = reader.nextLine();
-
-        Optional<Episode> foundEpisode = episodes.stream()
-                .filter(e -> e.getTitle().toUpperCase().contains(titleExcerpt.toUpperCase()))
-                .findFirst();
-
-        if (foundEpisode.isPresent()) {
-            Episode episode = foundEpisode.get();
-            System.out.println("Episode found:\n" +
-                    "Season: " + episode.getSeason() +
-                    ", Title: '" + episode.getTitle() + '\'' +
-                    ", Episode Number: " + episode.getEpisodeNumber() +
-                    ", Assessment: " + episode.getAssessment() +
-                    ", Date Release: " + episode.getDateRelease());
-        } else {
-            System.out.println("Episode not found.");
-        }
-
-
-//        System.out.println("A partir de que ano você deseja ver os episódios?");
-//        var year = reader.nextInt();
-//        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-//        episodes.stream()
-//                .filter(e -> e.getDateRelease() != null && e.getDateRelease().getYear() >= year)
-//                .sorted(Comparator.comparing(Episode::getDateRelease))
-//                .forEach(e -> System.out.println("TEMPORADA: " +
-//                        e.getSeason() + " EPISÓDIO:" + e.getTitle() + " " + e.getEpisodeNumber() + " AVALIAÇÃ0:" + e.getAssessment() + " DATA LANÇAMENTO:" + e.getDateRelease().format(formatter)
-//                ));
+        episodes.stream()
+                .filter(e -> e.getDateRelease() != null && e.getDateRelease().getYear() == year)
+                .sorted(Comparator.comparing(Episode::getDateRelease))
+                .forEach(e -> System.out.println("SEASON: " +
+                        e.getSeason() + " EPISODE:" + e.getTitle() + " " + e.getEpisodeNumber() +
+                        " ASSESSMENT:" + e.getAssessment() + " DATE RELEASE:" + e.getDateRelease().format(formatter)
+                ));
     }
 }
+
 
 
 

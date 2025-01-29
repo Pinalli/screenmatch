@@ -10,10 +10,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class ScreenmatchApplication implements CommandLineRunner {
 
-    // Constantes para configurar a API base e a chave de acesso
-    private static final String BASE_URL = "https://www.omdbapi.com/?t=gilmore+girls&season=";
-    private static final String API_KEY = "&apikey=6585022c";
-
     public static void main(String[] args) {
         SpringApplication.run(ScreenmatchApplication.class, args);
     }
